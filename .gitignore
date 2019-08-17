@@ -6,3 +6,7 @@
 
 #executables
 *.out
+
+#llvm bitcode
+tests/*.ll
+tests/*.bc

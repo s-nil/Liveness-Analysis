@@ -10,3 +10,9 @@
 #llvm bitcode
 tests/*.ll
 tests/*.bc
+
+#dot (graph description language file)
+tests/*.dot
+
+#vscode database files
+.vscode

@@ -14,7 +14,7 @@ void myfun(void){
     puts("leave myfun");
 }
 
-int main(){
+int main(int argc, char **argv){
     puts("in main");
     myfun();
     puts("after myfun()");

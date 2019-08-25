@@ -4,7 +4,9 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Instructions.h"
+
 #include <vector>
+#include <set>
 
 using namespace llvm;
 using namespace std;
@@ -59,23 +61,8 @@ namespace{
 		for (inst_iterator iit = inst_begin(F); iit!=inst_end(F); ++iit){
 			Value* v = &*iit;
 
-			if(isa<StoreInst>(&*iit)){
-				Value *vv = (((StoreInst*)v)->getPointerOperand());
-				if(find(domain.begin(),domain.end(),vv) == domain.end()){
-					domain.push_back(vv);
-				}
-			}
-			else if(isa<Instruction>(&*iit)){
-				string str;
-				raw_string_ostream rso(str);
-				rso << *iit;
-
-				if(str.size()>2 && str[2]=='%'){
-					if(find(domain.begin(),domain.end(),v) == domain.end()){
-						domain.push_back(v);
-					}
-				}
-			}
+			if((*iit).hasName())
+				domain.push_back(v);
 		}
 
 		int setSize = domain.size();
@@ -119,6 +106,36 @@ namespace{
 					FlowResultofBB tmp(InitBlockCond, InitBlockCond);
 					initValues[&*bbit] = tmp;
 				}
+			}
+
+			DenseMap<BasicBlock*,BitVector> def;
+
+			for(auto bbit = F.begin(); bbit != F.end(); ++bbit){
+				BitVector tmpdef(domain.size(),false);
+				for(auto &i : *bbit){
+					if(&*bbit == &*firstBB){
+						for(auto arg_it=F.arg_begin(); arg_it!=F.arg_end(); ++arg_it){
+							tmpdef.set(valuetoIdx[(*arg_it).getName()]);
+						}
+					}
+					if(i.hasName())
+						tmpdef.set(valuetoIdx[i.getName()]);
+				}
+				def[&*bbit] = tmpdef;
+			}
+
+			DenseMap<BasicBlock*,BitVector> use;
+
+			for(auto bbit = F.begin(); bbit!=F.end(); ++bbit){
+				BitVector tmpuse(domain.size(),false);
+				for(auto &i : *bbit){
+					for(auto j=0; j<i.getNumOperands(); ++j){
+						if(i.getOperand(j)->hasName() && valuetoIdx.find(i.getOperand(j)->getName())!=valuetoIdx.end()){
+							tmpuse.set(valuetoIdx[i.getOperand(j)->getName()]);
+						}
+					}
+				}
+				use[&*bbit] = tmpuse;
 			}
 
 			return fr;

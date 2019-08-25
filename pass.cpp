@@ -22,8 +22,6 @@ namespace{
 		errs() << '\n';
 	}
 
-	// class {};
-
 	class FlowResultofBB{
 		public:
 			BitVector in;
@@ -100,7 +98,7 @@ namespace{
 
 			for(auto bbit = F.begin(); bbit != F.end(); ++bbit){
 				if(&*bbit == &*firstBB){
-					FlowResultofBB tmp(boundaryCondition, boundaryCondition);
+					FlowResultofBB tmp(boundaryCondition, InitBlockCond);
 					initValues[&*bbit] = tmp;
 				}else{
 					FlowResultofBB tmp(InitBlockCond, InitBlockCond);
@@ -108,34 +106,42 @@ namespace{
 				}
 			}
 
+			/**	Use-Def of a BB using forward scanning of a BB
+			 * ------------------------------------------------
+			 * Assume x = y op z
+			 *
+			 * for i = 1 to numOfInstructions in BB do
+			 * 		if(y is not in def)
+			 * 			use <-- y
+			 *  	if(z is not in def)
+			 * 			use <-- z
+			 * 		def <-- x
+			 * ------------------------------------------------
+			 */
+
 			DenseMap<BasicBlock*,BitVector> def;
+			DenseMap<BasicBlock*,BitVector> use;
 
 			for(auto bbit = F.begin(); bbit != F.end(); ++bbit){
 				BitVector tmpdef(domain.size(),false);
+				BitVector tmpuse(domain.size(),false);
 				for(auto &i : *bbit){
 					if(&*bbit == &*firstBB){
 						for(auto arg_it=F.arg_begin(); arg_it!=F.arg_end(); ++arg_it){
 							tmpdef.set(valuetoIdx[(*arg_it).getName()]);
 						}
 					}
+					for(auto j=0; j<i.getNumOperands(); ++j){
+						if(i.getOperand(j)->hasName() && valuetoIdx.find(i.getOperand(j)->getName())!=valuetoIdx.end()){
+							if(!tmpdef[valuetoIdx[i.getOperand(j)->getName()]])
+								tmpuse.set(valuetoIdx[i.getOperand(j)->getName()]);
+						}
+					}
 					if(i.hasName())
 						tmpdef.set(valuetoIdx[i.getName()]);
 				}
-				def[&*bbit] = tmpdef;
-			}
-
-			DenseMap<BasicBlock*,BitVector> use;
-
-			for(auto bbit = F.begin(); bbit!=F.end(); ++bbit){
-				BitVector tmpuse(domain.size(),false);
-				for(auto &i : *bbit){
-					for(auto j=0; j<i.getNumOperands(); ++j){
-						if(i.getOperand(j)->hasName() && valuetoIdx.find(i.getOperand(j)->getName())!=valuetoIdx.end()){
-							tmpuse.set(valuetoIdx[i.getOperand(j)->getName()]);
-						}
-					}
-				}
 				use[&*bbit] = tmpuse;
+				def[&*bbit] = tmpdef;
 			}
 
 			return fr;

@@ -95,8 +95,22 @@ namespace{
 		BitVector ibc(setSize, false);
 		InitBlockCond = ibc;
 
+		run(F);
+
 		return false;
 	    }
+
+		FlowResult run(Function &F){
+			FlowResult fr;
+			DenseMap<BasicBlock*, FlowResultofBB> initValues;
+			DenseMap<StringRef,int> valuetoIdx;	//TODO
+
+			for(int i = 0; i<domain.size(); ++i){
+				valuetoIdx[domain[i]->getName()] = i;
+			}
+
+			return fr;
+		}
 
     };
 }

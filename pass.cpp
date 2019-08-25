@@ -109,6 +109,18 @@ namespace{
 				valuetoIdx[domain[i]->getName()] = i;
 			}
 
+			BasicBlock* firstBB = &F.front();
+
+			for(auto bbit = F.begin(); bbit != F.end(); ++bbit){
+				if(&*bbit == &*firstBB){
+					FlowResultofBB tmp(boundaryCondition, boundaryCondition);
+					initValues[&*bbit] = tmp;
+				}else{
+					FlowResultofBB tmp(InitBlockCond, InitBlockCond);
+					initValues[&*bbit] = tmp;
+				}
+			}
+
 			return fr;
 		}
 

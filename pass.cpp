@@ -78,8 +78,26 @@ namespace{
 			}
 		}
 
+		int setSize = domain.size();
+
+		BitVector bc(setSize, false);
+
+		int i = 0;
+		for(auto x : domain){
+			if(isa<Argument>(x)){
+				bc[i] = 1;
+			}
+			++i;
+		}
+
+		boundaryCondition = bc;
+
+		BitVector ibc(setSize, false);
+		InitBlockCond = ibc;
+
 		return false;
 	    }
+
     };
 }
 

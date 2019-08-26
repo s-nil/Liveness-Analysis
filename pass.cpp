@@ -4,6 +4,7 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/CFG.h"
 
 #include <vector>
 #include <set>
@@ -50,7 +51,7 @@ namespace{
 
 	    virtual bool runOnFunction(Function &F){
 		domain.clear();
-		errs() << F.getName() << '\n';
+//		errs() << F.getName() << '\n';
 
 		for (auto arg_it = F.arg_begin(); arg_it != F.arg_end(); ++arg_it){
 			domain.push_back(arg_it);
@@ -86,12 +87,13 @@ namespace{
 	    }
 
 		FlowResult run(Function &F){
-			FlowResult fr;
 			DenseMap<BasicBlock*, FlowResultofBB> initValues;
 			DenseMap<StringRef,int> valuetoIdx;	//TODO
+			DenseMap<int,StringRef> idxtoValue;	//TODO
 
 			for(int i = 0; i<domain.size(); ++i){
 				valuetoIdx[domain[i]->getName()] = i;
+				idxtoValue[i] = domain[i]->getName();
 			}
 
 			BasicBlock* firstBB = &F.front();
@@ -142,6 +144,52 @@ namespace{
 				}
 				use[&*bbit] = tmpuse;
 				def[&*bbit] = tmpdef;
+			}
+
+			bool converge = false;
+
+			int i = 0;
+			while(!converge){
+				i++;
+				converge = true;
+
+				auto &bblist = F.getBasicBlockList();
+				for(auto bbit=bblist.rbegin(); bbit!=bblist.rend(); ++bbit){
+					BitVector i(domain.size(),false);
+					BitVector o(domain.size(),false);
+
+					i = initValues[&*bbit].in;
+					o = initValues[&*bbit].out;
+
+					BitVector tmpout(domain.size(),false);
+					for(auto it = succ_begin(&*bbit); it!=succ_end(&*bbit); ++it){
+						tmpout |= initValues[&**it].in;
+					}
+
+					BitVector a(def[&*bbit]);
+					a.flip();
+					a &= tmpout;
+					a |= use[&*bbit];
+					BitVector tmpin(a);
+
+					initValues[&*bbit].in	= tmpin;
+					initValues[&*bbit].out	= tmpout;
+					if(converge && (i != tmpin || o != tmpout))
+						converge = false;
+				}
+			}
+
+			FlowResult fr(initValues);
+
+			for(auto i = initValues.begin(); i!=initValues.end(); ++i){
+				errs() << (*(*i).first).getName() << "\t|\t";
+				BitVector tmp = (*i).second.out;
+				for(int i=0; i<domain.size(); ++i){
+					if(tmp[i]){
+						errs() << idxtoValue[i] << ',';
+					}
+				}
+				errs() <<"\b \n";
 			}
 
 			return fr;

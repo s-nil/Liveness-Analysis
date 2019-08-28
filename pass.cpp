@@ -39,6 +39,9 @@ namespace{
 		public:
 			DenseMap<BasicBlock*, FlowResultofBB> fr;
 			FlowResult(){}
+			FlowResult(DenseMap<BasicBlock*, FlowResultofBB> f){
+				fr = f;
+			}
 	};
 
     class LA : public FunctionPass{
@@ -163,7 +166,24 @@ namespace{
 
 					BitVector tmpout(domain.size(),false);
 					for(auto it = succ_begin(&*bbit); it!=succ_end(&*bbit); ++it){
-						tmpout |= initValues[&**it].in;
+
+						BitVector tin = initValues[&**it].in;
+						for(auto ins=(*it)->begin(); ins!=(*it)->end(); ++ins){
+
+							if((*ins).getOpcode() == Instruction::PHI){
+								for(int opr=0; opr<(*ins).getNumOperands(); ++opr){
+
+									if((*ins).getOperand(opr)->hasName()){
+										auto phi = dyn_cast<PHINode>(ins);
+
+										if((*bbit).getName().compare(phi->getIncomingBlock(opr)->getName())){
+											tin[valuetoIdx[(*ins).getOperand(opr)->getName()]] = 0;
+										}
+									}
+								}
+							}
+						}
+						tmpout |= tin;
 					}
 
 					BitVector a(def[&*bbit]);
